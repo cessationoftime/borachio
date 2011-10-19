@@ -28,10 +28,10 @@ object BorachioBuild extends Build {
   override lazy val settings = super.settings ++ Seq(
     organization := "com.borachio",
     version := "2.0-SNAPSHOT",
-    scalaVersion := "2.9.0",
-    scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings"),
+	crossScalaVersions := Seq("2.9.0", "2.9.0-1", "2.9.1"),
+    scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings")
 
-    publishTo <<= version { v =>
+  /*  publishTo <<= version { v =>
       val nexus = "http://nexus.scala-tools.org/content/repositories/"
       if (v.trim.endsWith("SNAPSHOT"))
         Some("snapshots" at nexus + "snapshots/") 
@@ -39,12 +39,13 @@ object BorachioBuild extends Build {
         Some("releases" at nexus + "releases/")
     },
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+    */
   )
     
   lazy val borachio = Project("Borachio", file(".")) settings(
     compile in Mock := Analysis.Empty,
     publish := ()
-  ) aggregate(core, core_tests, scalatest, junit3, compiler_plugin, compiler_plugin_tests
+  ) aggregate(core, core_tests, specs2, scalatest, junit3, compiler_plugin, compiler_plugin_tests
   ) configs(Mock)
   
   lazy val core = Project("core", file("core")) settings(name := "Borachio Core")
@@ -59,19 +60,26 @@ object BorachioBuild extends Build {
     libraryDependencies += "junit" % "junit" % "3.8.2"
   ) dependsOn(core)
   
+  lazy val specs2: Project = Project("specs2", file("frameworks/specs2")) settings(
+    name := "Borachio Specs2 Support",
+    libraryDependencies += "org.specs2" %% "specs2" % "1.6.1"
+  ) dependsOn(core)
+  
   lazy val core_tests: Project = Project("core_tests", file("core_tests"), 
-    dependencies = Seq(scalatest % "test")) settings(publish := ())
+    dependencies = Seq(scalatest % "test", specs2 % "test")) settings(publish := ())
 
   lazy val compiler_plugin = Project("compiler_plugin", file("compiler_plugin")) settings(
     name := "Borachio Compiler Plugin",
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.9.0"
+    libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _)
   ) dependsOn(core)
     
+  def getScalaVersion(scalaVersion: String) = scalaVersion
+	
   lazy val compiler_plugin_tests = Project("compiler_plugin_tests", file("compiler_plugin_tests")) settings(
     generateMocksSettings: _*) settings(
       publish := (),
       scalacOptions in GenerateMocks <+= packageBin in (compiler_plugin, Compile) map { plug =>
         "-Xplugin:"+ plug.absolutePath
       }
-    ) dependsOn(scalatest % "mock;test", compiler_plugin) configs(Mock)
+    ) dependsOn(scalatest % "mock;test", specs2 % "mock;test", compiler_plugin) configs(Mock)
 }

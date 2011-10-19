@@ -21,17 +21,17 @@
 package com.borachio
 
 abstract class MockingClassLoader extends ClassLoader {
-  
+
   type UnderlyingClassLoader <: ClassLoader
-  
+
   protected val defaultClassLoader: UnderlyingClassLoader = getDefaultClassLoader()
-  
+
   protected def getDefaultClassLoader(): UnderlyingClassLoader
   protected def createMockClassLoader(): ClassLoaderInternal
   protected def createNormalClassLoader(): ClassLoaderInternal
-  
+
   var factory = new ThreadLocal[Any]
-  
+
   protected trait ClassLoaderInternal extends ClassLoader {
 
     override def loadClass(name: String): Class[_] = MockingClassLoader.this.loadClass(name)
@@ -50,7 +50,7 @@ abstract class MockingClassLoader extends ClassLoader {
 
   private val mockClassLoader = createMockClassLoader
   private val normalClassLoader = createNormalClassLoader
-  
+
   override def loadClass(name: String): Class[_] =
     if (useDefault(name)) {
       defaultClassLoader.loadClass(name)
@@ -61,14 +61,14 @@ abstract class MockingClassLoader extends ClassLoader {
         case _: ClassNotFoundException => loadClassNormal(name)
       }
     }
-  
+
   def loadClassNormal(name: String) =
     try {
       normalClassLoader.loadClassInternal(name)
     } catch {
       case _: ClassNotFoundException => defaultClassLoader.loadClass(name)
     }
-  
+
   private def useDefault(name: String) =
-    name.startsWith("scala.") || name.startsWith("java.") || name.startsWith("org.scalatest.")
+    name.startsWith("scala.") || name.startsWith("java.") || name.startsWith("org.scalatest.") || name.startsWith("org.specs2.")
 }
